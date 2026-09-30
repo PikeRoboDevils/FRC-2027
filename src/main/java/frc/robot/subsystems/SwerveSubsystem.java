@@ -4,6 +4,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -12,9 +13,16 @@ import swervelib.parser.SwerveParser;
 import static edu.wpi.first.units.Units.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.function.DoubleSupplier;
 
+import org.json.simple.parser.ParseException;
 import org.littletonrobotics.junction.AutoLogOutput;
+
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import yams.mechanisms.config.SwerveDriveConfig;
 import yams.mechanisms.swerve.SwerveDrive;
@@ -37,16 +45,44 @@ public class SwerveSubsystem extends SubsystemBase
 
         .withTranslationController(new PIDController(1.0, 0, 0)) // input: meters of position error
         .withRotationController(new PIDController(1.0, 0, 0));   // input: radians of heading error
-    try
-    {
-      
+    
+    // Attempt to Create Swerve Drive
+    try {
       var parser = SwerveParser.parse(new File("swerve-config"));
       drive =  parser.createSwerveDrive(cfg);
-
-    } catch (Exception e)
-    {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
+
+    // Attempt to Create AutoBuilder
+    try {
+      setupPathPlanner();
+    } catch (IOException | ParseException e) {
+      throw new RuntimeException(
+      "PathPlanner setup failed -- check deploy/pathplanner/settings.json exists", e);
+    }
+
+  }
+
+  private void setupPathPlanner() throws IOException, ParseException {
+    AutoBuilder.configure(
+        drive::getPose,                  // robot pose supplier
+        drive::resetOdometry,             // called if an auto defines a starting pose
+        drive::getRobotRelativeSpeed,     // ChassisSpeeds supplier -- MUST be robot-relative
+        (speedsRobotRelative, moduleFeedForwards) ->
+            drive.setRobotRelativeChassisSpeeds(speedsRobotRelative),
+        new PPHolonomicDriveController(
+            new PIDConstants(5.0, 0.0, 0.0),  // translation PID
+            new PIDConstants(5.0, 0.0, 0.0)   // rotation PID
+        ),
+        RobotConfig.fromGUISettings(),    // reads deploy/pathplanner/settings.json
+        () -> {
+          // Field origin is always the blue alliance wall -- flip paths when on red.
+          var alliance = DriverStation.getAlliance();
+          return alliance.filter(a -> a == DriverStation.Alliance.Red).isPresent();
+        },
+        this                              // subsystem requirement for the generated commands
+    );
   }
 
   public SwerveInputStream getAngularVelocityStream(DoubleSupplier x, DoubleSupplier y,
