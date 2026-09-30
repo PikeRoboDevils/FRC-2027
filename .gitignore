@@ -188,3 +188,6 @@ compile_commands.json
 
 # GitData 
 src/main/java/frc/robot/BuildConstants.java 
+
+# Local Settings
+simgui-ds.json

@@ -11,6 +11,8 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
+import edu.wpi.first.wpilibj.DataLogManager;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
@@ -33,8 +35,12 @@ public class Robot extends LoggedRobot {
    * initialization code.
    */
   public Robot() {
-    //Instantiate Akit.
+    //Instantiate Akit. Coded to only support Mechanisms
     Logger.recordMetadata("FRC-2027", "RobotNameTBD"); // Set a metadata value
+
+    // Instatiate WPIlogs, They are natively supported in YAGSL. Treat as pure Swerve logs 
+    DataLogManager.start();
+    DriverStation.startDataLog(DataLogManager.getLog()); // optional: also logs joystick/DS data
 
     if (isReal()) {
       Logger.addDataReceiver(new WPILOGWriter()); // Log to a USB stick ("/U/logs") 
