@@ -12,6 +12,7 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 
 public class Module {
@@ -38,6 +39,7 @@ public class Module {
         Dconfig.idleMode(IdleMode.kCoast);
         Tconfig.idleMode(IdleMode.kBrake);
 
+            Dconfig.encoder.positionConversionFactor(1/6.75); //MK4i L2 Gearing
             Dconfig.encoder.velocityConversionFactor(1/6.75); //MK4i L2 Gearing
             Tconfig.absoluteEncoder.positionConversionFactor( 1/(150/7) ); // MK4i steering gear ratio
 
@@ -72,6 +74,12 @@ public class Module {
 
     public double getTurnPos() {
         return Tmotor.getAbsoluteEncoder().getPosition();
+    }
+
+    public SwerveModulePosition getPos() {
+        return new SwerveModulePosition(
+            Dmotor.getEncoder().getPosition(),
+             new Rotation2d(getTurnPos()));
     }
 
     public void setState(SwerveModuleState state) {

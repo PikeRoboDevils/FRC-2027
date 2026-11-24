@@ -6,9 +6,12 @@ import org.littletonrobotics.junction.Logger;
 
 import com.ctre.phoenix6.hardware.Pigeon2;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -20,9 +23,15 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private Module fl,fr,bl,br;
     private Module[] ModuleIndex= {fl,fr,bl,br};
-
     private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(
         m_frontLeftLocation, m_frontRightLocation, m_backLeftLocation, m_backRightLocation );
+
+    public Pose2d pose;
+    private SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(
+        kinematics,
+        pigeon2.getRotation2d(),
+        new SwerveModulePosition[] {
+            fl.getPos(),fr.getPos(),bl.getPos(),br.getPos()});
 
     public SwerveSubsystem() {
         fl = new Module(0, 0);
@@ -37,7 +46,9 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public void setChasisSpeeds(ChassisSpeeds speeds) {
+        Logger.recordOutput("Swerve/Raw Chasis Speed", speeds);
         var moduleStates = kinematics.toSwerveModuleStates(speeds);
+        Logger.recordOutput("Swerve/Modules/Raw Module Setpoints", moduleStates);
 
         for (int i = 0; i<ModuleIndex.length; i++) {
             // Optimize Turning
@@ -51,7 +62,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
             // Set State
             ModuleIndex[i].setState( moduleStates[i]);
-        }
+            Logger.recordOutput("Swerve/Optimized Module Setpoints", moduleStates[i]);
+        }   
     }
 
     public ChassisSpeeds getChasisSpeeds() {
@@ -67,7 +79,8 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public void setAngle(double theta) {
-       pigeon2.setYaw(theta);
+    //    pigeon2.setYaw(theta); // Will mess up Odometry
+    resetPose(new Pose2d(pose.getTranslation(), new Rotation2d(theta)));
     }
 
     public void lock() {
@@ -80,14 +93,26 @@ public class SwerveSubsystem extends SubsystemBase {
         );
     }
 
+    public void resetPose(Pose2d nPose) { 
+        m_odometry.resetPosition(getAngle(),new SwerveModulePosition[] {fl.getPos(),fr.getPos(),bl.getPos(),br.getPos()},
+         nPose);
+    }
+
     @Override
     public void periodic() {
     // Periodically send a set of module states
-    Logger.recordOutput("Swerve Modules",
+    pose = m_odometry.update(getAngle(), new SwerveModulePosition[] {fl.getPos(),fr.getPos(),bl.getPos(),br.getPos()});
+
+
+    Logger.recordOutput("Swerve/Modules/Current Module States",
         fl.getState(),
         fr.getState(),
         bl.getState(),
         br.getState());
+
+    Logger.recordOutput("Swerve/pose", pose);
+    Logger.recordOutput("Swerve/Yaw", getAngle());
+    Logger.recordOutput("Swerve/Current Chasis Speeds",getChasisSpeeds());
 
     
     }
