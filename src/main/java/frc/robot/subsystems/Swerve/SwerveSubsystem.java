@@ -1,6 +1,11 @@
 package frc.robot.subsystems.Swerve;
 
-import static frc.robot.Constants.Swerve.*;
+import static frc.robot.Constants.Swerve.m_backLeftLocation;
+import static frc.robot.Constants.Swerve.m_backRightLocation;
+import static frc.robot.Constants.Swerve.m_frontLeftLocation;
+import static frc.robot.Constants.Swerve.m_frontRightLocation;
+import static frc.robot.Constants.Swerve.maxAngularSpeed;
+import static frc.robot.Constants.Swerve.maxSpeed;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -14,6 +19,7 @@ import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.Swerve.CanIDs;
 
 public class SwerveSubsystem extends SubsystemBase {
     
@@ -22,29 +28,51 @@ public class SwerveSubsystem extends SubsystemBase {
     private Pigeon2 pigeon2 = new Pigeon2(11);
 
     private Module fl,fr,bl,br;
-    private Module[] ModuleIndex= {fl,fr,bl,br};
+    private Module[] ModuleIndex;
     private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(
         m_frontLeftLocation, m_frontRightLocation, m_backLeftLocation, m_backRightLocation );
 
     public Pose2d pose;
-    private SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(
-        kinematics,
-        pigeon2.getRotation2d(),
-        new SwerveModulePosition[] {
-            fl.getPos(),fr.getPos(),bl.getPos(),br.getPos()});
 
+    private SwerveDriveOdometry m_odometry;
+    /**
+     * Creates New Swerve Drivebase 
+     * Using the CanIDs set in Constants/Swerve/CanIDs  <p>
+     * The physical Encoders & Motors expect to be configured before hand in their native applications 
+     * Rev Hardware Client, Pheonix Tuner etc)
+     */
     public SwerveSubsystem() {
-        fl = new Module(0, 0);
-        fr = new Module(0, 0);
-        bl = new Module(0, 0);
-        br = new Module(0, 0);
+        fl = new Module(CanIDs.flD,CanIDs.flT);
+        fr = new Module(CanIDs.frD, CanIDs.frT);
+        bl = new Module(CanIDs.blD,CanIDs.blT);
+        br = new Module(CanIDs.brD,CanIDs.brT);
+
+        ModuleIndex = new Module[]{fl,fr,bl,br};
+        
+        m_odometry = new SwerveDriveOdometry(
+            kinematics,
+            pigeon2.getRotation2d(),
+            new SwerveModulePosition[] {fl.getPos(),fr.getPos(),bl.getPos(),br.getPos()}
+        );
     }
 
 
+    /**
+     * A driving function for driving
+     * @param x Translation X / Joystick Left X-axis [-1,1]
+     * @param y Translation Y / Joystick Left Y-axis [-1,1]
+     * @param theta Rotation Speed / Joystick Right X-axis [-1,1]
+     * @return Desired ChasisSpeeds from joystick inputs
+     */
     public ChassisSpeeds joystickSpeeds(double x, double y, double theta) {
         return new ChassisSpeeds(x*maxSpeed,y*maxSpeed,theta*maxAngularSpeed);
     }
 
+    /**
+     * Runs entire drivebase to given speeds / sets all modules to their desired speed <p>
+     * It also Optimizize the given speeds before running them
+     * @param speeds Desired ChassisSpeeds to set drivebase to
+     */
     public void setChasisSpeeds(ChassisSpeeds speeds) {
         Logger.recordOutput("Swerve/Raw Chasis Speed", speeds);
         var moduleStates = kinematics.toSwerveModuleStates(speeds);
@@ -66,6 +94,10 @@ public class SwerveSubsystem extends SubsystemBase {
         }   
     }
 
+    /**
+     * 
+     * @return the current robot state as ChasisSpeeds
+     */
     public ChassisSpeeds getChasisSpeeds() {
         return kinematics.toChassisSpeeds(
                 fl.getState(),
@@ -74,15 +106,29 @@ public class SwerveSubsystem extends SubsystemBase {
                 br.getState());
     }
 
+    /**
+     * 
+     * @return Heading of the drivebase in Rotation2d
+     */
     public Rotation2d getAngle() {
        return new Rotation2d(pigeon2.getYaw().getValue());  
     }
 
+    /**
+     * Reset the Heading of the drivebase 
+     * this creates an offset in Odometry
+     * @param theta The angle the robot should be set to
+     */
     public void setAngle(double theta) {
     //    pigeon2.setYaw(theta); // Will mess up Odometry
     resetPose(new Pose2d(pose.getTranslation(), new Rotation2d(theta)));
     }
 
+    /**
+     * Locks the drivebase <p>
+     * Hard-Coded to set all wheels to face inwards and slowly move against each other 
+     * making it harder to push the robot around
+     */
     public void lock() {
         setChasisSpeeds(
             kinematics.toChassisSpeeds(
@@ -93,6 +139,10 @@ public class SwerveSubsystem extends SubsystemBase {
         );
     }
 
+    /**
+     * Resets the Pose 
+     * @param nPose
+     */
     public void resetPose(Pose2d nPose) { 
         m_odometry.resetPosition(getAngle(),new SwerveModulePosition[] {fl.getPos(),fr.getPos(),bl.getPos(),br.getPos()},
          nPose);

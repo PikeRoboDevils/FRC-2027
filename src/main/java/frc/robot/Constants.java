@@ -5,6 +5,7 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.RobotBase;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
@@ -16,11 +17,46 @@ import edu.wpi.first.math.geometry.Translation2d;
  */
 public final class Constants {
 
+  public static final Mode simMode = Mode.SIM;
+
+    /**
+   * if Replaying a Log change from simMode to REPLAY
+   */
+  public static final Mode currentMode = RobotBase.isReal() ? Mode.REAL : simMode;
+
+  public static enum Mode {
+    /** Running on a real robot. */
+    REAL,
+
+    /** Running a physics simulator. */
+    SIM,
+
+    /** Replaying from a log file. */
+    REPLAY
+  }
+
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
   }
 
   public static class Swerve {
+
+    public static class CanIDs {
+
+      public static int flD = 0;
+      public static int flT = 0;
+      
+      public static int frD = 0;
+      public static int frT = 0;
+
+      public static int blD = 0;
+      public static int blT = 0;
+      
+      public static int brD = 0;
+      public static int brT = 0;     
+
+    }
+
     public static final double driveP = 1;
 
     public static final double turnP = 1;

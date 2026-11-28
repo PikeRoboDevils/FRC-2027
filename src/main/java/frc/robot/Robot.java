@@ -16,12 +16,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
 /*
  * Instead of TimedRobot we have LoggedRobot
- * LoggedRobot is used for Advantage kit 
- * Akit has initialization code in this file 
- * Akit is used for input level replay 
- * 
- * You can think of this as a black blox
- * like in airplanes
+ * LoggedRobot is used for AdvantageKit 
  */
 public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
@@ -36,14 +31,25 @@ public class Robot extends LoggedRobot {
     //Instantiate Akit.
     Logger.recordMetadata("FRC-2027", "RobotNameTBD"); // Set a metadata value
 
-    if (isReal()) {
-      Logger.addDataReceiver(new WPILOGWriter()); // Log to a USB stick ("/U/logs") 
-      Logger.addDataReceiver(new NT4Publisher()); // Publish data to NetworkTables
-    } else { // Simulation OR Replay
+    switch (Constants.currentMode) {
+      case REAL:
+        Logger.addDataReceiver(new WPILOGWriter()); // Log to a USB stick ("/U/logs") 
+        Logger.addDataReceiver(new NT4Publisher()); // Publish data to NetworkTables
+        break;
+      case SIM:
+        setUseTiming(false); // Run as fast as possible
+
+      case REPLAY:
         setUseTiming(false); // Run as fast as possible
         String logPath = LogFileUtil.findReplayLog(); // Pull the replay log from AdvantageScope (or prompt the user)
         Logger.setReplaySource(new WPILOGReader(logPath)); // Read replay log
         Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim"))); // Save outputs to a new log
+      break;
+
+      default:
+        Logger.addDataReceiver(new WPILOGWriter()); // Log to a USB stick ("/U/logs") 
+        Logger.addDataReceiver(new NT4Publisher()); // Publish data to NetworkTables
+        break;
     }
 
     Logger.start(); // Start logging! No more data receivers, replay sources, or metadata values may be added.

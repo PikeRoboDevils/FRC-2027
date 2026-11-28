@@ -1,6 +1,10 @@
 package frc.robot.subsystems.Swerve;
 
-import static frc.robot.Constants.Swerve.*;
+import static frc.robot.Constants.Swerve.driveP;
+import static frc.robot.Constants.Swerve.maxSpeed;
+import static frc.robot.Constants.Swerve.turnD;
+import static frc.robot.Constants.Swerve.turnI;
+import static frc.robot.Constants.Swerve.turnP;
 
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
@@ -19,13 +23,28 @@ public class Module {
     private SparkMax Dmotor, Tmotor;
     private SparkMaxConfig Dconfig, Tconfig;
 
-    /* Initialize Module with Drive motor and Turn Motor CanIDS */
+    /**
+     *  Creates a New Module
+     * with CanIDs for SparkMaxes 
+     * 
+     * Inversions and Encoder Offsets should be set BEFOREHAND
+     * INSIDE the REV HARDWARE CLIENT
+     *  
+     * @param DriveID Drive Motor CanID
+     * @param TurnID Turn Motor CanID 
+     * 
+     * @return A Module Object
+     * 
+     * */
     public Module(int DriveID, int TurnID){
 
         Dmotor = new SparkMax(DriveID, MotorType.kBrushless);
         Tmotor = new SparkMax(TurnID, MotorType.kBrushless);
 
         // MOTOR CONFIG
+
+        Dconfig = new SparkMaxConfig();
+        Tconfig = new SparkMaxConfig();
 
         Dconfig.smartCurrentLimit(20,30);
         Tconfig.smartCurrentLimit(20,30);
@@ -46,7 +65,7 @@ public class Module {
         Dconfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
         Tconfig.closedLoop.feedbackSensor(FeedbackSensor.kAbsoluteEncoder);
 
-        Dconfig.closedLoop.outputRange(0,maxSpeed);
+        Dconfig.closedLoop.outputRange(-maxSpeed,maxSpeed);
         Tconfig.closedLoop.outputRange(-2*Math.PI,2*Math.PI);
 
         Tconfig.closedLoop.dFilter(0.1);
@@ -58,35 +77,53 @@ public class Module {
         Tconfig.closedLoop.pid(turnP, turnI, turnD);
 
 
-        // RESET & PERSIST
-        Dmotor.configure(Dconfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-        Tmotor.configure(Tconfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        // NO RESET & PERSIST
+        Dmotor.configure(Dconfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+        Tmotor.configure(Tconfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
 
     }
 
     private void setDriveVel(double velocity) {
-        Dmotor.getClosedLoopController().setSetpoint(velocity, ControlType.kVelocity);
+        // Dmotor.getClosedLoopController().setSetpoint(velocity, ControlType.kVelocity);
+        Dmotor.set(velocity/maxSpeed);
     }
 
     private void setTurnPos(double position) {
-        Dmotor.getClosedLoopController().setSetpoint(position, ControlType.kPosition);
+        Tmotor.getClosedLoopController().setSetpoint(position, ControlType.kPosition);
     }
 
+    /** 
+     * @return Turn Motor Position of this Module in RADIANS
+     */
     public double getTurnPos() {
         return Tmotor.getAbsoluteEncoder().getPosition();
     }
 
+    /**
+     * FOR ODOMETRY  <p>
+     * the "position" of this module for ODOMETRY 
+     * this gives the Total drive distance and Current angle of the module
+     * @return  SwerveModulePosition Object for this Module
+     */
     public SwerveModulePosition getPos() {
         return new SwerveModulePosition(
             Dmotor.getEncoder().getPosition(),
              new Rotation2d(getTurnPos()));
     }
 
+    /**
+     * Drives motors to match given ModuleState 
+     * @param state a WPILIB object giving both Drive Velocity and Turn Position
+     */
     public void setState(SwerveModuleState state) {
         setDriveVel(state.speedMetersPerSecond);
         setTurnPos(state.angle.getRadians());
     }
 
+    /**
+     * 
+     * @return  The current state of this Module <p> Drive Velocity + Angle (Radians) 
+     */
     public SwerveModuleState getState(){
         return new SwerveModuleState(
             Dmotor.getEncoder().getVelocity(),

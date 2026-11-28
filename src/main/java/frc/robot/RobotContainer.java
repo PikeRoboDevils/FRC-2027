@@ -30,6 +30,7 @@ public class RobotContainer {
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
+    drivebase = new SwerveSubsystem();
     // Configure the trigger bindings
     configureBindings();
   }
@@ -43,12 +44,14 @@ public class RobotContainer {
     // }, drivebase);
 
 // Field Relative
+drivebase.setDefaultCommand(
     Commands.run(()->{
       var speeds = drivebase.joystickSpeeds(driver.getLeftX(), driver.getLeftY(), driver.getRightX());
       drivebase.setChasisSpeeds(
         ChassisSpeeds.fromFieldRelativeSpeeds(speeds, drivebase.getAngle())
       );
-    }, drivebase);
+    }, drivebase)
+    );
 
 
     driver.b().whileTrue(Commands.run(()->drivebase.setAngle(0),drivebase));
